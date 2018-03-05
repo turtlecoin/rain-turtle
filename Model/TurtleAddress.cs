@@ -4,7 +4,7 @@ namespace TurtleBot.Services
 {
     public class TurtleWallet
     {
-        public string Address { get; private set; }
+        public string Address { get; }
 
         private TurtleWallet(string address)
         {

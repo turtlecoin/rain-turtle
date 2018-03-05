@@ -19,12 +19,9 @@ namespace TurtleBot.Services
         private readonly ILogger _logger;
         private readonly DiscordSocketClient _discord;
         private readonly WalletService _walletService;
-        private readonly IConfiguration _config;
+        private readonly ConfigModule _config;
 
         private readonly Random _random;
-        private readonly TimeSpan _checkInterval;
-        private readonly TimeSpan _announceDelay;
-        private TimeSpan _registerDelay;
         private Task _checkTask;
         private CancellationTokenSource _checkCanellationTokenSource;
         private readonly ConcurrentDictionary<SocketUser, TurtleWallet> _wallets;
@@ -38,10 +35,18 @@ namespace TurtleBot.Services
         private IReadOnlyCollection<IGuildUser> _guildUsers;
 
         public RainServiceState State { get; private set; }
-        public long BalanceThreshold { get; }
+
+        private readonly WrapperService<long> _balanceThreshold = new WrapperService<long>();
+        
+        private readonly WrapperService<TimeSpan> _checkInterval = new WrapperService<TimeSpan>();
+        private readonly WrapperService<TimeSpan> _announceDelay = new WrapperService<TimeSpan>();
+        private readonly WrapperService<TimeSpan> _registerDelay = new WrapperService<TimeSpan>();
+
+        public long BalanceThreshold => _balanceThreshold.Value;
+
         public TurtleWallet BotWallet { get; private set; }
 
-        public RainService(ILoggerFactory loggerFactory, DiscordSocketClient discord, WalletService walletService, IConfiguration config)
+        public RainService(ILoggerFactory loggerFactory, DiscordSocketClient discord, WalletService walletService, ConfigModule config)
         {
             _logger = loggerFactory.CreateLogger("rain");
             _discord = discord;
@@ -49,9 +54,12 @@ namespace TurtleBot.Services
             _config = config;
 
             _random = new Random();
-            _checkInterval = new TimeSpan(0, 0, Convert.ToInt32(config["rainCheckIntervalS"]));
-            _announceDelay = new TimeSpan(0, 0, Convert.ToInt32(config["rainAnnounceDelayS"]));
-            _registerDelay = new TimeSpan(0, 0, Convert.ToInt32(config["rainRegisterDelayS"]));
+            
+            TimeSpan TimspanConverter(object value) => TimeSpan.FromSeconds(Convert.ToDouble(value));
+            _checkInterval.Converter = TimspanConverter;
+            _announceDelay.Converter = TimspanConverter;
+            _registerDelay.Converter = TimspanConverter;
+            
             _checkCanellationTokenSource = new CancellationTokenSource();
             _wallets = new ConcurrentDictionary<SocketUser, TurtleWallet>();
             _requiredReactions = new ConcurrentDictionary<ulong, Emote>();
@@ -61,7 +69,11 @@ namespace TurtleBot.Services
 
             // The rain service has to be started explicitly (with ``!rain start``)
             State = RainServiceState.Stopped;
-            BalanceThreshold = Convert.ToInt64(config["rainBalanceThreshold"]);
+
+            config.AddBinding(_balanceThreshold, "threshold");
+            config.AddBinding(_checkInterval, "check");
+            config.AddBinding(_announceDelay, "announce");
+            config.AddBinding(_registerDelay, "register");
 
             _discord.MessageReceived += MessageReceived;
         }
@@ -76,7 +88,7 @@ namespace TurtleBot.Services
                 _guildUsers = await _guild.GetUsersAsync();
                 BotWallet = await _walletService.GetFirstAddress();
                 _checkCanellationTokenSource = new CancellationTokenSource();
-                _checkTask = Task.Run(() => CheckBalanceLoop(_checkInterval, _checkCanellationTokenSource.Token));
+                _checkTask = Task.Run(() => CheckBalanceLoop(_checkInterval.Value, _checkCanellationTokenSource.Token));
             }
             catch (Exception e)
             {
@@ -144,7 +156,7 @@ namespace TurtleBot.Services
                 var currentBalance = await _walletService.GetBalance(BotWallet);
                 _guildUsers = await _guild.GetUsersAsync();
 
-                if (currentBalance >= BalanceThreshold)
+                if (currentBalance >= _balanceThreshold.Value)
                 {
                     if (!(_discord.GetChannel(_channelId) is SocketTextChannel channel))
                     {
@@ -156,7 +168,7 @@ namespace TurtleBot.Services
                     State = RainServiceState.BalanceExceeded;
 
                     var message = await AnnounceTeaser(channel);
-                    await Task.Delay(_announceDelay, cancellationToken);
+                    await Task.Delay(_announceDelay.Value, cancellationToken);
 
                     var registeredWallets = 0;
                     var txId = "";
@@ -168,7 +180,7 @@ namespace TurtleBot.Services
                             .OrderBy(x => _random.Next())
                             .Take(10));
                         await AnnounceRegistration(channel, message);
-                        await Task.Delay(_registerDelay, cancellationToken);
+                        await Task.Delay(_registerDelay.Value, cancellationToken);
 
                         _logger.LogInformation("=== RAINING ===");
                         State = RainServiceState.Raining;
@@ -222,7 +234,7 @@ namespace TurtleBot.Services
             var embed2 = new EmbedBuilder()
                 .WithColor(new Color(114, 137, 218))
                 .WithTitle("QUICK, SEND ME YOUR WALLET ADDRESSES!")
-                .WithDescription($"YOU HAVE ``{_registerDelay.TotalSeconds}`` SECONDS TO SEND ME YOUR WALLET ADDRESS.\nDON'T FORGET TO ADD THE REACTION I WILL SEND YOU BACK.")
+                .WithDescription($"YOU HAVE ``{_registerDelay.Value.TotalSeconds}`` SECONDS TO SEND ME YOUR WALLET ADDRESS.\nDON'T FORGET TO ADD THE REACTION I WILL SEND YOU BACK.")
                 .WithImageUrl(_config["rainImageUrlRegistration"])
                 .Build();
 
@@ -244,7 +256,7 @@ namespace TurtleBot.Services
         private async Task AnnounceRain(SocketTextChannel channel, RestUserMessage message, CancellationToken cancellationToken, long balance, int wallets, string txId)
         {
             var currentBalance = await _walletService.GetBalance(BotWallet);
-            var missing = (BalanceThreshold - currentBalance) / 100.0M;
+            var missing = (_balanceThreshold.Value - currentBalance) / 100.0M;
             var desc = missing > 0
                 ? $"Donate {missing} TRTL to make it rain again! ```\n{BotWallet.Address}```"
                 : "Wait, it is still raining?!";

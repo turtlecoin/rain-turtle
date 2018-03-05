@@ -19,7 +19,7 @@ namespace TurtleBot.Services
 
         private int _requestId;
 
-        public WalletService(ILoggerFactory loggerFactory, IConfiguration config)
+        public WalletService(ILoggerFactory loggerFactory, ConfigModule config)
         {
             _logger = loggerFactory.CreateLogger("wallet");
             _client = new HttpClient();
@@ -75,12 +75,13 @@ namespace TurtleBot.Services
             requestMessage.Content = new StringContent(content, Encoding.UTF8, "application/json");
             var response = await _client.SendAsync(requestMessage);
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var responseString = await response.Content.ReadAsStringAsync();
-                return JObject.Parse(responseString);
+                throw new Exception($"{(int) response.StatusCode} {response.ReasonPhrase}");
             }
-            throw new Exception($"{(int)response.StatusCode} {response.ReasonPhrase}");
+
+            var responseString = await response.Content.ReadAsStringAsync();
+            return JObject.Parse(responseString);
         }
     }
 }
