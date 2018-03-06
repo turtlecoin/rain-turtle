@@ -48,8 +48,6 @@ namespace TurtleBot.Modules
                     case RainServiceState.Raining:
                         await ReplyAsync("Be patient, little turtle, it's raining soon.");
                         return;
-
-                    case RainServiceState.Stopped:
                     default:
                         await ReplyAsync("The sky is blue, no rain for today...");
                         return;
@@ -84,14 +82,22 @@ namespace TurtleBot.Modules
                     break;
                 default:
 
-                    var value = _config.GetValue(subCommand);
-
-                    if (string.IsNullOrEmpty(value))
+                    try
                     {
-                        break;
+                        var value = _config.GetValue(subCommand);
+
+                        if (string.IsNullOrEmpty(value))
+                        {
+                            break;
+                        }
+
+                        ReplyAsync($"The current value is `{value}`");
+                    }
+                    catch
+                    {
+                        ReplyAsync($"Error: `{subCommand}` is not a enabled");
                     }
 
-                    ReplyAsync($"The current value is `{value}`");
                     return;
             }
         }
