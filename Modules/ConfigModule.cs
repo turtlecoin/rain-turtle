@@ -48,12 +48,7 @@ namespace TurtleBot.Services
             var query = change.Split(" ");
 
             var configName = _configNames[query[0]];
-
-            if (configName.Equals(""))
-            {
-                throw new KeyNotFoundException();
-            }
-
+            
             if (query[1].Equals("reset"))
             {
                 Reset(configName);
