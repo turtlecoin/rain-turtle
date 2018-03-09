@@ -66,12 +66,13 @@ namespace TurtleBot.Services
 
         private void SetValue(string key, string value)
         {
-            _config[key] = value;
 
             foreach (var refrence in references.Where(refrence => refrence.Key.Equals(key)))
             {
                 refrence.Value.SetValue(value);
             }
+            
+            _config[key] = value;
         }
 
         private void Reset(string key)
