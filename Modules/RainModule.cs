@@ -78,7 +78,7 @@ namespace TurtleBot.Modules
                 case "reset":
                     _config.Reset();
 
-                    ReplyAsync("Succses: All configuration values have been reset");
+                    await ReplyAsync("Succses: All configuration values have been reset");
                     break;
                 default:
 
@@ -91,11 +91,11 @@ namespace TurtleBot.Modules
                             break;
                         }
 
-                        ReplyAsync($"The current value is `{value}`");
+                        await ReplyAsync($"The current value is `{value}`");
                     }
                     catch
                     {
-                        ReplyAsync($"Error: `{subCommand}` is not a enabled");
+                        await ReplyAsync($"Error: `{subCommand}` is not a enabled");
                     }
 
                     return;
@@ -112,11 +112,11 @@ namespace TurtleBot.Modules
             {
                 _config.Execute($"{subCommand} {value}");
 
-                ReplyAsync($"Succses: The value of `{subCommand}` is now `{_config.GetValue(subCommand)}`");
+                await ReplyAsync($"Succses: The value of `{subCommand}` is now `{_config.GetValue(subCommand)}`");
             }
             catch
             {
-                ReplyAsync("Error: Unexpected value");
+                await ReplyAsync("Error: Unexpected value");
             }
         }
     }

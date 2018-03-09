@@ -10,9 +10,9 @@ namespace TurtleBot.Services
     {
         private readonly IConfiguration _config;
 
-        private readonly Tuple<string, string>[] _configDefualts;
+        private readonly Tuple<string, string>[] _configDefaults;
 
-        private readonly Dictionary<string, WrapperService> refrences =
+        private readonly Dictionary<string, WrapperService> references =
             new Dictionary<string, WrapperService>();
 
         private readonly Dictionary<string, string> _configNames = new Dictionary<string, string>();
@@ -21,7 +21,7 @@ namespace TurtleBot.Services
 
         public ConfigModule(IConfiguration config)
         {
-            _configDefualts = config.GetChildren().Select(child => Tuple.Create(child.Key, child.Value)).ToArray();
+            _configDefaults = config.GetChildren().Select(child => Tuple.Create(child.Key, child.Value)).ToArray();
 
             _config = config;
         }
@@ -38,9 +38,9 @@ namespace TurtleBot.Services
                 throw new KeyNotFoundException();
             }
             
-            refrences.Add(configName, wraper);
+            references.Add(configName, wraper);
             
-            wraper.SetValue(_configDefualts.First(def => def.Item1.Equals(configName)).Item2);
+            wraper.SetValue(_configDefaults.First(def => def.Item1.Equals(configName)).Item2);
         }
 
         public void Execute(string change)
@@ -68,7 +68,7 @@ namespace TurtleBot.Services
         {
             _config[key] = value;
 
-            foreach (var refrence in refrences.Where(refrence => refrence.Key.Equals(key)))
+            foreach (var refrence in references.Where(refrence => refrence.Key.Equals(key)))
             {
                 refrence.Value.SetValue(value);
             }
@@ -76,7 +76,7 @@ namespace TurtleBot.Services
 
         private void Reset(string key)
         {
-            SetValue(key, _configDefualts.First(config => config.Item1.Equals(key)).Item2);
+            SetValue(key, _configDefaults.First(config => config.Item1.Equals(key)).Item2);
         }
 
         public void Reset()
