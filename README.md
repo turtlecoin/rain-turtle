@@ -37,4 +37,4 @@ Set ``walletdServiceAddress``, ``walletdServicePort`` and ``walletdRPCPassword``
 
 **DO NOT SHARE YOUR TOKEN WITH ANYBODY**
 
-Further instructions vary by your IDE. Project should open up straight away and bre ready to go in VS Code.
+Further instructions vary by your IDE. Project should open up straight away and be ready to go in VS Code.
